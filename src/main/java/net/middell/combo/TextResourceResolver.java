@@ -1,3 +1,22 @@
+/*
+ * #%L
+ * Text Resource Combo Utilities
+ * %%
+ * Copyright (C) 2012 Gregor Middell
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
 package net.middell.combo;
 
 import com.google.common.base.Function;
@@ -9,6 +28,7 @@ import com.google.common.collect.Maps;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.Charset;
 import java.util.Map;
 
@@ -19,10 +39,10 @@ public class TextResourceResolver implements Function<String, TextResource> {
 
     private final Map<String, MountPoint> mountPoints = Maps.newHashMap();
 
-    public void mount(String root, File directory, String mappedPath, Charset charset, long maxAge) {
+    public void mount(String root, File directory, String sourceURI, Charset charset, long maxAge) {
         Preconditions.checkArgument(directory.isDirectory(), directory + " is not a directory");
         Preconditions.checkArgument(directory.canRead(), directory + " cannot be read");
-        mountPoints.put(root, new MountPoint(directory, mappedPath, charset, maxAge));
+        mountPoints.put(root, new MountPoint(directory, (sourceURI.replaceAll("\\/+$", "") + "/"), charset, maxAge));
     }
 
     public TextResourceCombo resolve(Iterable<String> paths) {
@@ -45,24 +65,22 @@ public class TextResourceResolver implements Function<String, TextResource> {
     }
 
     private static class MountPoint {
-        private static final Joiner PATH_JOINER = Joiner.on('/');
-
         private final File root;
         private final Charset charset;
-        private final String rootPath;
+        private final URI source;
         private final long maxAge;
 
-        private MountPoint(File root, String rootPath, Charset charset, long maxAge) {
+        private MountPoint(File root, String sourceURI, Charset charset, long maxAge) {
             this.root = root;
             this.charset = charset;
-            this.rootPath = Objects.firstNonNull(rootPath, "").replaceAll("\\/+$", "");
+            this.source = URI.create(sourceURI);
             this.maxAge = maxAge;
         }
 
         private TextResource resolve(String relativePath) throws IOException {
             final File resource = new File(root, relativePath);
             Preconditions.checkArgument(isDescendant(root, resource), resource + " is not contained in " + root);
-            return new TextResource(resource, PATH_JOINER.join(rootPath, relativePath), charset, maxAge);
+            return new TextResource(resource, source.resolve(relativePath), charset, maxAge);
         }
 
         private static boolean isDescendant(File parent, File descendant) throws IOException {

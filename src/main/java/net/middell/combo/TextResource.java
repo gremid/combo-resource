@@ -1,3 +1,22 @@
+/*
+ * #%L
+ * Text Resource Combo Utilities
+ * %%
+ * Copyright (C) 2012 Gregor Middell
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
 package net.middell.combo;
 
 import com.google.common.base.Function;
@@ -16,18 +35,20 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
+ * A text-based resource to be delivered via HTTP.
+ *
  * @author <a href="http://gregor.middell.net/" title="Homepage">Gregor Middell</a>
  */
 public class TextResource implements InputSupplier<Reader> {
 
     final File resource;
-    final String path;
+    final URI source;
     final Charset charset;
     final long maxAge;
 
-    public TextResource(File resource, String path, Charset charset, long maxAge) {
+    public TextResource(File resource, URI source, Charset charset, long maxAge) {
         this.resource = resource;
-        this.path = path;
+        this.source = source;
         this.charset = charset;
         this.maxAge = maxAge;
     }
@@ -44,14 +65,45 @@ public class TextResource implements InputSupplier<Reader> {
 
     @Override
     public String toString() {
-        return Objects.toStringHelper(this).addValue(path).toString();
+        return Objects.toStringHelper(this).addValue(source).toString();
     }
 
-    public static final String TEXT_CSS = "text/css";
-    public static final String APPLICATION_JAVASCRIPT = "application/javascript";
-    public static final String APPLICATION_JSON = "application/json";
-    public static final String TEXT_PLAIN = "text/plain";
-    public static final String APPLICATION_XML = "application/xml";
+    protected class CSSURLRewriteFilterReader extends Reader {
+        private final Reader in;
+        private StringReader buf;
+
+        private CSSURLRewriteFilterReader(Reader in) {
+            this.in = in;
+        }
+
+        @Override
+        public int read(char[] cbuf, int off, int len) throws IOException {
+            if (buf == null) {
+                final String css = CharStreams.toString(in);
+                final Matcher urlRefMatcher = URL_REF_PATTERN.matcher(css);
+                final StringBuffer rewritten = new StringBuffer(css.length());
+                while (urlRefMatcher.find()) {
+                    urlRefMatcher.appendReplacement(rewritten, "url(" + source.resolve(urlRefMatcher.group(1)) + ")");
+                }
+                urlRefMatcher.appendTail(rewritten);
+                buf = new StringReader(rewritten.toString());
+            }
+            return buf.read(cbuf, off, len);
+        }
+
+        @Override
+        public void close() throws IOException {
+            Closeables.close(buf, false);
+        }
+    }
+
+    private static final Pattern URL_REF_PATTERN = Pattern.compile("url\\(([^\\)]+)\\)");
+
+    static final String TEXT_CSS = "text/css";
+    static final String APPLICATION_JAVASCRIPT = "application/javascript";
+    static final String APPLICATION_JSON = "application/json";
+    static final String TEXT_PLAIN = "text/plain";
+    static final String APPLICATION_XML = "application/xml";
 
     static Map<String, String> MIME_TYPES = Maps.newHashMap();
 
@@ -69,36 +121,4 @@ public class TextResource implements InputSupplier<Reader> {
             return Objects.firstNonNull(Files.getFileExtension(input), "").toLowerCase();
         }
     };
-
-    private static final Pattern URL_REF_PATTERN = Pattern.compile("url\\(([^\\)]+)\\)");
-
-    private class CSSURLRewriteFilterReader extends Reader {
-        private final URI path = URI.create(TextResource.this.path);
-        private final Reader in;
-        private StringReader buf;
-
-        private CSSURLRewriteFilterReader(Reader in) {
-            this.in = in;
-        }
-
-        @Override
-        public int read(char[] cbuf, int off, int len) throws IOException {
-            if (buf == null) {
-                final String css = CharStreams.toString(in);
-                final Matcher urlRefMatcher = URL_REF_PATTERN.matcher(css);
-                final StringBuffer rewritten = new StringBuffer(css.length());
-                while (urlRefMatcher.find()) {
-                    urlRefMatcher.appendReplacement(rewritten, "url(" + path.resolve(urlRefMatcher.group(1)) + ")");
-                }
-                urlRefMatcher.appendTail(rewritten);
-                buf = new StringReader(rewritten.toString());
-            }
-            return buf.read(cbuf, off, len);
-        }
-
-        @Override
-        public void close() throws IOException {
-            Closeables.close(buf, false);
-        }
-    }
 }
