@@ -26,13 +26,12 @@
  * and delivered as a single resource. Frameworks like Yahoo's <a href="http://yuilibrary.com/" title="YUI Homepage">YUI</a>
  * support this best practice.</p>
  *
- * <p>This package provides utility classes to retrieve {@link TextResource text-based resources} from a
- * {@link TextResourceResolver#mount(String, java.io.File, String, java.nio.charset.Charset, long) configurable} set of
- * directories in the server filesystem, concatenate them to a single “{@link TextResourceCombo resource combo}” and
- * {@link TextResourceCombo#copyTo(java.io.Writer) stream} them to an output channel, e.g. a servlet response stream,
- * a file cache etc.).</p>
+ * <p>This package provides utility classes to retrieve {@link net.middell.combo.TextResource text-based resources} from a
+ * {@link net.middell.combo.TextResourceResolver#mount(String, java.io.File, String, java.nio.charset.Charset, long) configurable} set of
+ * directories in the server filesystem, concatenate them to a single “{@link net.middell.combo.TextResourceCombo resource combo}” and
+ * jointly provide them for streaming, e.g. to a servlet response stream, a file cache etc.).</p>
  *
- * <p>Rudimentary support is implemented for {@link TextResource.CSSURLRewriteFilterReader rewriting links} to external
+ * <p>Rudimentary support is implemented for {@link net.middell.combo.TextResource.CSSURLRewriteFilterReader rewriting links} to external
  * resources within the combined ones, e.g. <code>url()</code> constructs in CSS resources.</p>
  *
  * @author <a href="http://gregor.middell.net/" title="Homepage">Gregor Middell</a>

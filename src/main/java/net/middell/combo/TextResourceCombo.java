@@ -21,33 +21,61 @@ package net.middell.combo;
 
 import com.google.common.collect.Iterables;
 import com.google.common.io.CharStreams;
+import com.google.common.io.InputSupplier;
 
 import java.io.IOException;
-import java.io.Writer;
+import java.io.Reader;
 import java.util.ArrayList;
 
 /**
+ * An ordered sequential combination of text-based resources.
+ * <p/>
+ * Serves as a container for resources, exposes aggregated metadata and is usable as an input supplier of the joint
+ * contents in the contained resources.
+ *
  * @author <a href="http://gregor.middell.net/" title="Homepage">Gregor Middell</a>
  */
-public class TextResourceCombo extends ArrayList<TextResource> {
+public class TextResourceCombo extends ArrayList<TextResource> implements InputSupplier<Reader> {
 
+    /**
+     * Constructor.
+     *
+     * @param resources the resources to be contained in this combo. The iteration order of the parameter is
+     *                  supposed to be significant.
+     */
     public TextResourceCombo(Iterable<TextResource> resources) {
         super(Iterables.size(resources));
         Iterables.addAll(this, resources);
     }
 
+    /**
+     * Determines the media type of this combo by retrieving it from the first member.
+     *
+     * @return the media type or <code>text/plain</code> in the case of an empty combo
+     */
     public String getMediaType() {
         return (isEmpty() ? TextResource.TEXT_PLAIN : get(0).getMediaType());
     }
 
+    /**
+     * Determines the latest modification time of all contained resources.
+     *
+     * @return the latest modification time
+     * @see java.io.File#lastModified()
+     */
     public long lastModified() {
         long lastModified = -1;
         for (TextResource rd : this) {
-            lastModified = Math.max(lastModified, rd.resource.lastModified());
+            lastModified = Math.max(lastModified, rd.content.lastModified());
         }
         return (lastModified >= 0 ? lastModified : System.currentTimeMillis());
     }
 
+    /**
+     * Determines the smallest maximum cache age of all contained resources.
+     *
+     * @return the maximum cache age of this combo (in seconds)
+     */
     public long maxAge() {
         long maxAge = Long.MAX_VALUE;
         for (TextResource rd : this) {
@@ -56,7 +84,14 @@ public class TextResourceCombo extends ArrayList<TextResource> {
         return (maxAge < Long.MAX_VALUE ? maxAge : 0);
     }
 
-    public void copyTo(Writer out) throws IOException {
-        CharStreams.copy(CharStreams.join(this), out);
+    /**
+     * Provides a joint reader of all contained resources in their given order.
+     *
+     * @return a reader concatenating the contents of all resources in the combo
+     * @throws IOException
+     */
+    @Override
+    public Reader getInput() throws IOException {
+        return CharStreams.join(this).getInput();
     }
 }

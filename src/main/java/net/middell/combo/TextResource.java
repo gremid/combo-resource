@@ -36,30 +36,97 @@ import java.util.regex.Pattern;
 
 /**
  * A text-based resource to be delivered via HTTP.
+ * <p/>
+ * Next to the reference to a file containing the resource's content, this class models some metadata specific to
+ * its HTTP-based delivery like a URI via which can it be referenced individually or the maximum time it can be
+ * cached by browsers or proxy servers.
  *
  * @author <a href="http://gregor.middell.net/" title="Homepage">Gregor Middell</a>
  */
 public class TextResource implements InputSupplier<Reader> {
+    /**
+     * CSS media type.
+     */
+    public static final String TEXT_CSS = "text/css";
 
-    final File resource;
-    final URI source;
-    final Charset charset;
-    final long maxAge;
+    /**
+     * JavaScript source media type.
+     */
+    public static final String APPLICATION_JAVASCRIPT = "application/javascript";
 
-    public TextResource(File resource, URI source, Charset charset, long maxAge) {
-        this.resource = resource;
+    /**
+     * JSON media type.
+     */
+    public static final String APPLICATION_JSON = "application/json";
+
+    /**
+     * Plaintext media type.
+     */
+    public static final String TEXT_PLAIN = "text/plain";
+
+    /**
+     * XML media type.
+     */
+    public static final String APPLICATION_XML = "application/xml";
+
+    /**
+     * File containing the resource's content.
+     */
+    public final File content;
+
+    /**
+     * URI of the resource, used e.g. for link rewriting.
+     */
+    public final URI source;
+
+    /**
+     * The character set with which the resource's content is encoded.
+     */
+    public final Charset charset;
+
+    /**
+     * Maximum age of this resource in a HTTP cache (specified in seconds).
+     */
+    public final long maxAge;
+
+    /**
+     * Constructor.
+     *
+     * @param content assigned to {@link #content}
+     * @param source  assigned to {@link #source}
+     * @param charset assigned to {@link #charset}
+     * @param maxAge  assigned to {@link #maxAge}
+     */
+    public TextResource(File content, URI source, Charset charset, long maxAge) {
+        this.content = content;
         this.source = source;
         this.charset = charset;
         this.maxAge = maxAge;
     }
 
+    /**
+     * Determines the media type of the resource by mapping its filename extension.
+     * <p/>
+     * For unknown filename extensions, it returns <code>text/plain</code> as a default.
+     *
+     * @return the media/MIME type
+     */
     public String getMediaType() {
-        return Objects.firstNonNull(MIME_TYPES.get(TO_FILENAME_EXTENSION.apply(resource.getName())), TEXT_PLAIN);
+        return Objects.firstNonNull(MIME_TYPES.get(TO_FILENAME_EXTENSION.apply(content.getName())), TEXT_PLAIN);
     }
 
+    /**
+     * Creates a reader for this resource's content.
+     * <p/>
+     * If the resource is of media type <code>text/css</code>, the reader is wrapped by a {@link CSSURLRewriteFilterReader filter}
+     * which rewrites <code>url()</code> references to external resources on the fly.
+     *
+     * @return a reader for this resource's content
+     * @throws IOException
+     */
     @Override
     public Reader getInput() throws IOException {
-        final BufferedReader reader = Files.newReader(resource, charset);
+        final BufferedReader reader = Files.newReader(content, charset);
         return (TEXT_CSS.equals(getMediaType()) ? new CSSURLRewriteFilterReader(reader) : reader);
     }
 
@@ -68,6 +135,13 @@ public class TextResource implements InputSupplier<Reader> {
         return Objects.toStringHelper(this).addValue(source).toString();
     }
 
+    /**
+     * Filters CSS input from a reader in order to rewrite references to external resources.
+     * <p/>
+     * References to external resources in CSS via <code>url()</code> are relative to the location of the CSS resource,
+     * which often results in them becoming invalid upon {@link TextResourceCombo combination} of resources. This filter
+     * uses the CSS resource's {@link TextResource#source source URI} to resolve external references against it on the fly.
+     */
     protected class CSSURLRewriteFilterReader extends Reader {
         private final Reader in;
         private StringReader buf;
@@ -99,13 +173,7 @@ public class TextResource implements InputSupplier<Reader> {
 
     private static final Pattern URL_REF_PATTERN = Pattern.compile("url\\(([^\\)]+)\\)");
 
-    static final String TEXT_CSS = "text/css";
-    static final String APPLICATION_JAVASCRIPT = "application/javascript";
-    static final String APPLICATION_JSON = "application/json";
-    static final String TEXT_PLAIN = "text/plain";
-    static final String APPLICATION_XML = "application/xml";
-
-    static Map<String, String> MIME_TYPES = Maps.newHashMap();
+    private static Map<String, String> MIME_TYPES = Maps.newHashMap();
 
     static {
         MIME_TYPES.put("css", TEXT_CSS);
@@ -115,7 +183,7 @@ public class TextResource implements InputSupplier<Reader> {
         MIME_TYPES.put("xml", APPLICATION_XML);
     }
 
-    static final Function<String,String> TO_FILENAME_EXTENSION = new Function<String, String>() {
+    private static final Function<String, String> TO_FILENAME_EXTENSION = new Function<String, String>() {
         @Override
         public String apply(String input) {
             return Objects.firstNonNull(Files.getFileExtension(input), "").toLowerCase();
