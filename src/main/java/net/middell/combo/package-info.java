@@ -27,8 +27,8 @@
  * support this best practice.</p>
  *
  * <p>This package provides utility classes to retrieve {@link net.middell.combo.TextResource text-based resources} from a
- * {@link net.middell.combo.TextResourceResolver#mount(String, java.io.File, String, java.nio.charset.Charset, long) configurable} set of
- * directories in the server filesystem, concatenate them to a single “{@link net.middell.combo.TextResourceCombo resource combo}” and
+ * {@link net.middell.combo.TextResourceResolver#mount(String, TextResourceCollection) configurable} set of
+ * {@link net.middell.combo.TextResourceCollection resource collections}, concatenate them to a single “{@link net.middell.combo.TextResourceCombo resource combo}” and
  * jointly provide them for streaming, e.g. to a servlet response stream, a file cache etc.).</p>
  *
  * <p>Rudimentary support is implemented for {@link net.middell.combo.TextResource.CSSURLRewriteFilterReader rewriting links} to external
