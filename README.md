@@ -19,6 +19,6 @@ Usage with Apache Maven
 <dependency>
   <groupId>net.middell</groupId>
   <artifactId>combo-resource</artifactId>
-  <version>1.0</version>
+  <version>1.1</version>
 </dependency>
 ```
